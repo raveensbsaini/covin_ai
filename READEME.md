@@ -55,17 +55,12 @@ Ensure you have the following installed on your machine:
     ```
       pip3 install -r requirements.txt
     ```
-5.  ** check database.db in your current directory**
+5.  ** check database.db file in your current directory**
     - if not exits
     ```
       touch database.db
     ```
-5.  **Run bash script **
-    It will run fastapi server on your behalf.
-    ```
-      start.sh
-    ```
-6.  ** or simple just run**
+6.  ** simple just run**
     if you don't you bash
     ```
       fastapi run main.py

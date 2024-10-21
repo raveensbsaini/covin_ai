@@ -98,8 +98,7 @@ async def create_new_user(
         "password": password,
     }
     try:
-        async with database.transaction():
-            await database.execute(query=query, values=values)
+        await database.execute(query=query, values=values)
         return "you are now successfully registered"
     except:
         return HTTPException(
@@ -115,8 +114,7 @@ async def get_user_input(
 ):
     query = "SELECT * FROM users WHERE name = :name and password = :password;"
     values = {"name": name, "password": password}
-    async with database.transaction():
-        a = await database.fetch_one(query=query, values=values)
+    a = await database.fetch_one(query=query, values=values)
     a = dict(a)
     return a
 
@@ -165,6 +163,7 @@ async def add_expense(
         )
         expense_id = dict(expense_id)["id"]
         if body.method == "percentage":
+            assert split_data is  not None
             split_data = dict(body.split_data)
             for key in split_data:
                 new_amount = (body.amount * split_data[key]) / 100
@@ -184,7 +183,6 @@ async def add_expense(
                     values={"id": borrower_user_id},
                 )
                 borrower_amount = dict(borrower_amount)["amount"] + new_amount
-                print(borrower_amount)
                 await database.execute(
                     query="UPDATE users SET amount = :borrower_amount  WHERE id = :borrower_id;",
                     values={
@@ -197,7 +195,6 @@ async def add_expense(
             async with database.transaction():
                 users_list = await database.fetch_all(query="SELECT id FROM users")
                 users_list = [dict(i)["id"] for i in users_list]
-                print("users_list", users_list)
                 new_amount = body.amount / len(users_list)
                 for i in users_list:
                     await database.execute(
@@ -219,6 +216,7 @@ async def add_expense(
                     )
 
         if body.method == "exact":
+            assert body.split_data is not None
             split_data = dict(body.split_data)
             for key in split_data:
                 new_amount = split_data[key]
