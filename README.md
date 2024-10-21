@@ -153,11 +153,12 @@ The Expense Sharing Application provides the following API endpoints for managin
 - **Request Body**:
   ```json
   {
-    "method": "equal",  // Options: "exact", "percentage", "equal"
-    "amount": 200,
-    "split_data": {
-      "user_id_1": 50,
-      "user_id_2": 50
+    "method": "percentage",  // Options: "exact", "percentage", "equal"
+    "amount": 100,
+    "split_data":{           // key must be of str(user_id) eg. "1","23"
+      "1":20,
+      "2": 30,
+      "3":50
     }
   }
 ### 3. Retrieve Individual User Expenses
