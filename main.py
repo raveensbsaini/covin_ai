@@ -137,14 +137,22 @@ async def add_expense(
             user_id = dict(user_id)["id"]
         else:
             return HTTPException(401, "No such users found")
-
+        all_users = await database.fetch_all("select id from users;")
+        all_users = {dict(i)["id"] for i in all_users}
+        print(all_users)
         if (
-            await functions.check(body.amount, body.method, body.split_data, database)
+            await functions.data_validation(body.amount, body.method, body.split_data, all_users)
             == False
         ):
             return HTTPException(
                 400,
-                "split_data must be of type {'user_id':integer} and total sum of integer must be 100 when method is percentage and all users_id must be a valid user_id.",
+                """split_data must be of type {'user_id':integer} 
+                  ,All users_id must be a valid user_id
+                  ,If method is percentage then total sum must be 100 eg: split_data = {"2":30,"4":"30","3""40"} 
+                  ,If method = exact then total sum must be equal to amount
+                  ,If method is exact There must  no split_data in body of requemust .
+                  Check the following something is mismatched.
+                  ."""
             )
 
         await database.execute(
