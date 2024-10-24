@@ -2,6 +2,9 @@ from databases import Database
 
 
 async def data_validation(amount, method, d, all_users):
+    if method in ["exact", "percentage"]:
+        if d == None:
+            return False
     if method == "equal":
         if d != None:
             return False
@@ -9,7 +12,7 @@ async def data_validation(amount, method, d, all_users):
             return True
     else:
         count = 0
-        for key in d:
+        for key in dict(d):
             try:
                 a = int(key)
                 if a not in all_users:

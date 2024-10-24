@@ -115,14 +115,16 @@ async def create_new_user(
         raise  HTTPException(500,str(e))
                     
 
-@app.get("/user_input")  # This api send back users detail if valid user present
-async def get_user_input(
+@app.get("/user_details")  # This api send back users detail if valid user present
+async def get_user_details(
     name: Annotated[str | None, Header()] = None,
     password: Annotated[str | None, Header()] = None,
 ):
     query = "SELECT * FROM users WHERE name = :name and password = :password;"
     values = {"name": name, "password": password}
     a = await database.fetch_one(query=query, values=values)
+    if not a:
+        raise HTTPException(401,"Invalid username or password")
     a = dict(a)
     return a
 
@@ -144,7 +146,7 @@ async def add_expense(
         if user_id:
             user_id = dict(user_id)["id"]
         else:
-            raise HTTPException(401, "No such users found")
+            raise HTTPException(401, "Invalid username or password")
         all_users = await database.fetch_all("select id from users;")
         all_users = {dict(i)["id"] for i in all_users}
         if (
@@ -273,7 +275,7 @@ async def retreive_expense(
             values={"name": name, "password": password},
         )
         if not amount:
-            raise HTTPException(401, "No such users found. Please check credentials")
+            raise HTTPException(401, "Invalid username or password")
         else:
             amount = dict(amount)["amount"]
         return amount
@@ -290,14 +292,14 @@ async def overall_expense(
             values={"name": name, "password": password},
         )
         if not user_id:
-            raise HTTPException(401, "No such users found.Please check credentials.")
+            raise HTTPException(401, "Invalid username or password")
         else:
             user_id = dict(user_id)["id"]
         amount = await database.fetch_one(
             query="SELECT SUM(amount) AS total_amount FROM expenses as answer;"
         )
         if not amount:
-            raise HTTPException(401, "No such users found. Please check credentials")
+            raise HTTPException(401, "Invalid username or password")
         else:
             amount = dict(amount)["total_amount"]
         return amount
@@ -314,7 +316,7 @@ async def download_balance_sheet(
             values={"name": name, "password": password},
         )
         if not user_id:
-            raise HTTPException(401, "No such users found.Please check credentials.")
+            raise HTTPException(401,"Invalid username or password")
         all_users_data = await database.fetch_all(query="select * from users;")
         all_users_data = [dict(i) for i in all_users_data]
     output = io.StringIO()
