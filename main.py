@@ -1,4 +1,3 @@
-from os import pread
 from fastapi import FastAPI, HTTPException, Header, Response
 from fastapi.datastructures import QueryParams
 from fastapi.responses import StreamingResponse
@@ -9,11 +8,16 @@ import io
 import csv
 from databases import Database
 from pydantic import BaseModel, EmailStr, Json
+import sqlite3
 from contextlib import asynccontextmanager
 import functions
 from typing import Any
+import os
 
-database = Database("sqlite+aiosqlite:///database.db")
+if os.environ.get("TESTING_DB") == "1":
+    database = Database("sqlite+aiosqlite:///test.db")
+else:
+    database = Database("sqlite+aiosqlite:///database.db")
 
 
 @asynccontextmanager
@@ -23,8 +27,10 @@ async def lifespan(app: FastAPI):
         query="""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,phone TEXT UNIQUE,
-                email TEXT UNIQUE ,password TEXT UNIQUE,
+                name TEXT NOT NULL,
+                phone TEXT UNIQUE,
+                email TEXT UNIQUE,
+                password TEXT UNIQUE,
                 amount INTEGER DEFAULT(0)
             );
         """
@@ -97,15 +103,17 @@ async def create_new_user(
         "email": body.email,
         "password": password,
     }
-    try:
+    try:       
         await database.execute(query=query, values=values)
         return "you are now successfully registered"
-    except:
-        return HTTPException(
+    except sqlite3.IntegrityError as e:
+         raise HTTPException(
             400,
-            "either password or name is not suitable. Please try with different password or name.",
+            f"either password or name is not suitable. Please try with different password or name,{str(e)}.",
         )
-
+    except Exception as e:
+        raise  HTTPException(500,str(e))
+                    
 
 @app.get("/user_input")  # This api send back users detail if valid user present
 async def get_user_input(
@@ -126,7 +134,7 @@ async def add_expense(
     password: Annotated[str | None, Header()] = None,
 ):
     if body.amount == 0:
-        return HTTPException(400, "amount cannot be 0")
+        raise HTTPException(400, "amount cannot be 0")
     current_time = time.time()
     async with database.transaction():
         user_id = await database.fetch_one(
@@ -136,15 +144,14 @@ async def add_expense(
         if user_id:
             user_id = dict(user_id)["id"]
         else:
-            return HTTPException(401, "No such users found")
+            raise HTTPException(401, "No such users found")
         all_users = await database.fetch_all("select id from users;")
         all_users = {dict(i)["id"] for i in all_users}
-        print(all_users)
         if (
             await functions.data_validation(body.amount, body.method, body.split_data, all_users)
             == False
         ):
-            return HTTPException(
+            raise HTTPException(
                 400,
                 """split_data must be of type {'user_id':integer} 
                   ,All users_id must be a valid user_id
@@ -252,7 +259,7 @@ async def add_expense(
                     },
                 )
 
-    return HTTPException(200, "successfully added expense")
+    raise HTTPException(200, "successfully added expense")
 
 
 @app.get("/retrieve_individual_user_expense")
@@ -266,7 +273,7 @@ async def retreive_expense(
             values={"name": name, "password": password},
         )
         if not amount:
-            return HTTPException(401, "No such users found. Please check credentials")
+            raise HTTPException(401, "No such users found. Please check credentials")
         else:
             amount = dict(amount)["amount"]
         return amount
@@ -283,14 +290,14 @@ async def overall_expense(
             values={"name": name, "password": password},
         )
         if not user_id:
-            return HTTPException(401, "No such users found.Please check credentials.")
+            raise HTTPException(401, "No such users found.Please check credentials.")
         else:
             user_id = dict(user_id)["id"]
         amount = await database.fetch_one(
             query="SELECT SUM(amount) AS total_amount FROM expenses as answer;"
         )
         if not amount:
-            return HTTPException(401, "No such users found. Please check credentials")
+            raise HTTPException(401, "No such users found. Please check credentials")
         else:
             amount = dict(amount)["total_amount"]
         return amount
@@ -307,7 +314,7 @@ async def download_balance_sheet(
             values={"name": name, "password": password},
         )
         if not user_id:
-            return HTTPException(401, "No such users found.Please check credentials.")
+            raise HTTPException(401, "No such users found.Please check credentials.")
         all_users_data = await database.fetch_all(query="select * from users;")
         all_users_data = [dict(i) for i in all_users_data]
     output = io.StringIO()
